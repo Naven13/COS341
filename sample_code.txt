@@ -1,5 +1,18 @@
-main {
-    int x;
-    x = 5;
-    print(x);
+main
+{
+  num V_a, num V_b, num V_result;
+  V_a = input;
+  V_b = input;
+  V_result = F_logic(V_a, V_b, 0);
+  print(V_result);
+}
+
+num F_logic(num V_x, num V_y, num V_dummy)
+{
+  num V_temp, V_dummy1, V_dummy2;
+  if eq(V_x, 0) then
+    V_temp = not(V_y);
+  else
+    V_temp = or(V_x, F_logic(sub(V_x, 1), V_y, 0));
+  return V_temp;
 }

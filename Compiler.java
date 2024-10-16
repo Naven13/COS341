@@ -3,7 +3,8 @@ import java.util.*;
 
 public class Compiler {
     public static void main(String[] args) {
-        String sourceCode = readSourceCode("C:\\\\Users\\\\User\\\\OneDrive\\\\Documents\\\\University Stuff\\\\Third Year\\\\Semester 2\\\\COS 341\\\\sample_code.txt");
+        String sourceCode = readSourceCode("C:\\Users\\naven\\OneDrive\\Documents\\University\\3rd year\\2024\\COS341\\COS341\\sample_code.txt");
+        //need to fix path for the executable file submission
         
         // Lexer
         Lexer lexer = new Lexer(sourceCode);
@@ -16,21 +17,26 @@ public class Compiler {
 
         // Parser
         Parser parser = new Parser(tokens);
-        Parser.Node ast = parser.parse();
+        try {
+            Parser.Node ast = parser.parse();
+            System.out.println("AST: " + ast); // Print the AST for verification
+        } catch (Exception e) {
+            System.err.println("Parsing Error: " + e.getMessage());
+        }
 
         // Scope Analyzer
-        ScopeAnalyzer scopeAnalyzer = new ScopeAnalyzer();
-        analyzeScopes(ast, scopeAnalyzer);
+        //ScopeAnalyzer scopeAnalyzer = new ScopeAnalyzer();
+        //analyzeScopes(ast, scopeAnalyzer);
 
         // Type Checker
-        TypeChecker typeChecker = new TypeChecker();
-        checkTypes(ast, typeChecker);
+        //TypeChecker typeChecker = new TypeChecker();
+        //checkTypes(ast, typeChecker);
 
         // Code Generator
-        CodeGenerator codeGenerator = new CodeGenerator();
-        String targetCode = codeGenerator.generateCode(ast);
+        //CodeGenerator codeGenerator = new CodeGenerator();
+        //String targetCode = codeGenerator.generateCode(ast);
         
-        System.out.println(targetCode);
+        //System.out.println(targetCode);
     }
 
     private static String readSourceCode(String path) {
