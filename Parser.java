@@ -19,13 +19,7 @@ public class Parser {
     
         Node globalVars = parseGlobalVars(); // Parse global variable declarations
     
-        // Check for the BEGIN token directly after globalVars
-        if (currentToken().type == TokenType.BEGIN) {
-            match(TokenType.BEGIN); // Expect 'begin' for the main algorithm block
-        } else {
-            throw new RuntimeException("Expected token: BEGIN after global variables, but found: " + currentToken().type);
-        }
-    
+        // Instead of requiring 'BEGIN', directly proceed to parse instructions
         Node algo = parseAlgo(); // Parse the main algorithm block
         Node functions = parseFunctions(); // Parse function declarations
     
@@ -66,14 +60,12 @@ public class Parser {
     }
 
     private Node parseAlgo() {
-        match(TokenType.BEGIN); // Expect 'begin'
         List<Node> instrNodes = new ArrayList<>();
-        while (currentToken().type != TokenType.END) { // While not at the end
-            instrNodes.add(parseInstruction()); // Parse instructions
+        while (currentToken().type != TokenType.RCURLY && currentToken().type != TokenType.END) { 
+            instrNodes.add(parseInstruction()); // Parse instructions until we reach the end of the program or function
         }
-        match(TokenType.END); // Expect 'end'
         return new Node("Algorithm", instrNodes.toArray(new Node[0])); // Return an Algorithm node
-    }
+    }    
 
     private Node parseFunctions() {
         List<Node> functionNodes = new ArrayList<>();
