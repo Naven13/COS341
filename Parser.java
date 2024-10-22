@@ -1,4 +1,13 @@
 import java.util.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import java.io.FileWriter;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 public class Parser {
     private List<Lexer.Token> tokens;
@@ -292,5 +301,30 @@ public class Parser {
                     ", children=" + children +
                     '}';
         }
+    }
+
+    public void writeTreeToXML(Node root, String filename) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.newDocument();
+
+        Element rootElement = createElementFromNode(doc, root);
+        doc.appendChild(rootElement);
+
+        // Write XML to file
+        Transformer transformer = TransformerFactory.newInstance().newTransformer();
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        transformer.transform(new DOMSource(doc), new StreamResult(new FileWriter(filename)));
+    }
+
+    private Element createElementFromNode(Document doc, Node node) {
+        Element element = doc.createElement(node.type);
+        if (node.value != null) {
+            element.appendChild(doc.createTextNode(node.value));
+        }
+        for (Node child : node.children) {
+            element.appendChild(createElementFromNode(doc, child));
+        }
+        return element;
     }
 }
