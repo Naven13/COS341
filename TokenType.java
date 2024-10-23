@@ -1,8 +1,9 @@
 public enum TokenType {
-    VNAME,      // Variable name
-    FNAME,      // Function name
+    V,      // Variable name
+    F,      // Function name
     CONST,      // Numeric Constant
     TEXT,       // Text Constant
+    VOID,
 
     // Keywords
     IF,         // Keyword: if
@@ -37,8 +38,8 @@ public enum TokenType {
     RPAREN,     // Right parenthesis )
     SEMICOLON,  // Semicolon ;
     COMMA,      // Comma ,
-    LCURLY,     // Left curly brace {
-    RCURLY,     // Right curly brace }
+    PROLOG,     // Left curly brace {
+    EPILOG,     // Right curly brace }
 
     // End of file
     EOF         // End of file token
