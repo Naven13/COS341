@@ -5,26 +5,35 @@ import java.io.File;
 import java.util.*;
 
 class ASTNode {
+    private static int idCounter = 0; // Static counter for UniqueID
+    private final int uniqueID; // Unique ID for the node
     String value; // Value or type of the node (e.g., operator, variable)
     List<ASTNode> children; // Children of this node
 
     public ASTNode(String value) {
         this.value = value;
         this.children = new ArrayList<>();
+        this.uniqueID = idCounter++; // Assign UniqueID and increment the counter
     }
 
+    // Method to add a child node
     public void addChild(ASTNode child) {
         children.add(child);
     }
 
+    // Method to get the UniqueID
+    public int getUniqueID() {
+        return uniqueID;
+    }
+
+    // Improved printTree method
     public void printTree(String prefix, boolean isTail) {
-        System.out.println(prefix + (isTail ? "└── " : "├── ") + value); // Print the current node value
+        System.out.println(prefix + (isTail ? "└── " : "├── ") + value + " (ID: " + uniqueID + ")"); // Print the current node value with ID
         for (int i = 0; i < children.size(); i++) {
             // Recursively print each child, updating the prefix
             children.get(i).printTree(prefix + (isTail ? "    " : "│   "), i == children.size() - 1);
         }
     }
-    
 
     @Override
     public String toString() {
