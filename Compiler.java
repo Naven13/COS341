@@ -17,22 +17,27 @@ public class Compiler {
         }
         lexer.tokenize("output.xml");
 
-        //Parser
-
-        SLRParser.initializeGrammar();
-        SLRParser.initializeParsingTables();
+        SLRParser.initializeGrammar(); // Make sure you have this method to set up your grammar
+        SLRParser.initializeParsingTables(); // Initialize parsing tables
         String[] input = SLRParser.readTokensFromXML("output.xml");
 
         // Parse the input using the SLR table
-        boolean result =  SLRParser.parse(input);
+        SLRParser parser = new SLRParser(); // Create an instance of SLRParser
+        boolean result = parser.parse(input);
 
         if (result) {
             System.out.println("Input is successfully parsed.");
+            ASTNode syntaxTree = parser.getSyntaxTree(); // Get the syntax tree
+            // Output the syntax tree
+            System.out.println("Syntax Tree:");
+            syntaxTree.printTree("", true); // Start with an empty prefix and true for the first node
         } else {
             System.out.println("Parsing failed.");
         }
+        
+        
 
-        System.out.println(SLRParser.inputAST);
+        //System.out.println(SLRParser.inputAST);
         // Scope Analyzer
         //ScopeAnalyzer scopeAnalyzer = new ScopeAnalyzer();
         //analyzeScopes(ast, scopeAnalyzer);

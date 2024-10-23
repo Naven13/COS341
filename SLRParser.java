@@ -3,16 +3,43 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.util.*;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
+
+class ASTNode {
+    String value; // Value or type of the node (e.g., operator, variable)
+    List<ASTNode> children; // Children of this node
+
+    public ASTNode(String value) {
+        this.value = value;
+        this.children = new ArrayList<>();
+    }
+
+    public void addChild(ASTNode child) {
+        children.add(child);
+    }
+
+    public void printTree(String prefix, boolean isTail) {
+        System.out.println(prefix + (isTail ? "└── " : "├── ") + value); // Print the current node value
+        for (int i = 0; i < children.size(); i++) {
+            // Recursively print each child, updating the prefix
+            children.get(i).printTree(prefix + (isTail ? "    " : "│   "), i == children.size() - 1);
+        }
+    }
+    
+
+    @Override
+    public String toString() {
+        return value; // Simple string representation for debugging
+    }
+    
+}
 
 public class SLRParser {
     // Grammar rules and parsing table data structures
     static List<String[]> grammar = new ArrayList<>();
     static Map<Integer, Map<String, String>> actionTable = new HashMap<>();
     static Map<Integer, Map<String, Integer>> gotoTable = new HashMap<>();
-    public static StringBuilder inputAST = new StringBuilder(); // Global AST
+    private static ASTNode syntaxTree; // Root of the syntax tree
+
     
     // Method to read tokens from the XML file and build the input string array
     public static String[] readTokensFromXML(String xmlFilePath) {
@@ -983,11 +1010,10 @@ public class SLRParser {
 
     public static boolean parse(String[] input) {
         Stack<Integer> stateStack = new Stack<>();
-        Stack<String> symbolStack = new Stack<>();
+        Stack<ASTNode> symbolStack = new Stack<>(); // Use ASTNode stack instead of String
         stateStack.push(0);  // Start state
-
+    
         int pointer = 0;
-
         while (pointer < input.length) {
             System.out.println("State Stack: " + stateStack);
             System.out.println("Symbol Stack: " + symbolStack);
@@ -996,13 +1022,14 @@ public class SLRParser {
             System.out.println("Current State: " + currentState);
             String symbol = input[pointer];
             System.out.println("Symbol: " + symbol);
-
+    
             // Get action from action table
             String action = actionTable.getOrDefault(currentState, new HashMap<>()).get(symbol);
-
+    
             if (action == null) {
                 // Error: Unexpected symbol
                 System.out.println("Error: Unexpected symbol '" + symbol + "'.");
+                // Print expected symbols
                 Map<String, String> expectedActions = actionTable.getOrDefault(currentState, new HashMap<>());
                 if (!expectedActions.isEmpty()) {
                     System.out.println("Expected one of: " + expectedActions.keySet());
@@ -1014,7 +1041,7 @@ public class SLRParser {
                 // Shift operation
                 int nextState = Integer.parseInt(action.substring(1));
                 stateStack.push(nextState);
-                symbolStack.push(symbol);  // Push the symbol onto the symbol stack
+                symbolStack.push(new ASTNode(symbol)); // Push symbol as an ASTNode
                 pointer++;  // Move to next symbol
             } else if (action.startsWith("R")) {
                 // Reduce operation
@@ -1022,30 +1049,29 @@ public class SLRParser {
                 String[] rule = grammar.get(ruleIndex);
                 String lhs = rule[0];  // Left-hand side of the grammar rule
                 String rhs = rule[1];  // Right-hand side of the grammar rule (could be empty)
-
+    
                 System.out.println("Reducing using rule " + ruleIndex + ": " + lhs + " -> " + rhs);
-
+    
                 // Determine how many symbols to pop
                 int popCount = rhs.equals("") ? 0 : rhs.split(" ").length;
-
+    
                 // Pop states and symbols
+                List<ASTNode> children = new ArrayList<>(); // List to hold children for the AST node
                 for (int i = 0; i < popCount; i++) {
                     stateStack.pop();
-                    symbolStack.pop();  // Pop from symbol stack as well
+                    children.add(symbolStack.pop());  // Pop from symbol stack as ASTNodes
                 }
-
-                // Push the LHS non-terminal onto the symbol stack
-                symbolStack.push(lhs);
-                inputAST.append(lhs).append(" "); // Append LHS to AST
-                
-                // If there are RHS tokens to add, handle them here
-                if (!rhs.isEmpty()) {
-                    String[] rhsTokens = rhs.split(" ");
-                    for (String token : rhsTokens) {
-                        inputAST.append(token).append(" "); // Append RHS tokens to AST
-                    }
+    
+                // Create a new AST node for the LHS
+                ASTNode newNode = new ASTNode(lhs);
+                // Add the children to the new node
+                for (int i = children.size() - 1; i >= 0; i--) { // Reverse to maintain order
+                    newNode.addChild(children.get(i));
                 }
-
+    
+                // Push the new node onto the symbol stack
+                symbolStack.push(newNode);
+    
                 // Get the next state from the goto table
                 int topState = stateStack.peek();
                 Integer gotoState = gotoTable.getOrDefault(topState, new HashMap<>()).get(lhs);
@@ -1054,17 +1080,24 @@ public class SLRParser {
                     return false;
                 }
                 stateStack.push(gotoState);  // Push the new state from the GOTO table
-
+    
             } else if (action.equals("ACC")) {
                 // Accept operation
                 System.out.println("Input successfully parsed.");
-                System.out.println("AST: " + inputAST.toString().trim()); // Print the AST
+                // The syntax tree root is the last item in the symbol stack
+                syntaxTree = symbolStack.pop();
                 return true;
             }
         }
-
+    
         return false;
     }
+
+    // Method to get the syntax tree
+    public ASTNode getSyntaxTree() {
+        return syntaxTree;
+    }
+    
     
 
 }
