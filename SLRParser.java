@@ -983,7 +983,9 @@ public class SLRParser {
         Stack<String> symbolStack = new Stack<>();
         stateStack.push(0);  // Start state
     
+        StringBuilder inputAST = new StringBuilder(); // To build the AST string
         int pointer = 0;
+    
         while (pointer < input.length) {
             System.out.println("State Stack: " + stateStack);
             System.out.println("Symbol Stack: " + symbolStack);
@@ -997,17 +999,14 @@ public class SLRParser {
             String action = actionTable.getOrDefault(currentState, new HashMap<>()).get(symbol);
     
             if (action == null) {
-                // Error: Unexpected symbol, print expected symbols
+                // Error: Unexpected symbol
                 System.out.println("Error: Unexpected symbol '" + symbol + "'.");
-    
-                // Get expected symbols from actionTable for the current state
                 Map<String, String> expectedActions = actionTable.getOrDefault(currentState, new HashMap<>());
                 if (!expectedActions.isEmpty()) {
                     System.out.println("Expected one of: " + expectedActions.keySet());
                 } else {
                     System.out.println("No valid actions for the current state.");
                 }
-    
                 return false;
             } else if (action.startsWith("S")) {
                 // Shift operation
@@ -1024,7 +1023,7 @@ public class SLRParser {
     
                 System.out.println("Reducing using rule " + ruleIndex + ": " + lhs + " -> " + rhs);
     
-                // Determine how many symbols to pop (based on the number of symbols in the RHS of the rule)
+                // Determine how many symbols to pop
                 int popCount = rhs.equals("") ? 0 : rhs.split(" ").length;
     
                 // Pop states and symbols
@@ -1035,6 +1034,15 @@ public class SLRParser {
     
                 // Push the LHS non-terminal onto the symbol stack
                 symbolStack.push(lhs);
+                inputAST.append(lhs).append(" "); // Append LHS to AST
+                
+                // If there are RHS tokens to add, handle them here
+                if (!rhs.isEmpty()) {
+                    String[] rhsTokens = rhs.split(" ");
+                    for (String token : rhsTokens) {
+                        inputAST.append(token).append(" "); // Append RHS tokens to AST
+                    }
+                }
     
                 // Get the next state from the goto table
                 int topState = stateStack.peek();
@@ -1048,12 +1056,14 @@ public class SLRParser {
             } else if (action.equals("ACC")) {
                 // Accept operation
                 System.out.println("Input successfully parsed.");
+                System.out.println("AST: " + inputAST.toString().trim()); // Print the AST
                 return true;
             }
         }
     
         return false;
     }
+    
     
     
     
