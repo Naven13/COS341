@@ -1,186 +1,202 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
+// Abstract Node class for the AST
+abstract class ASTNode {
+    public abstract String generateCode();
+}
+
+// Program Node
+class ProgramNode extends ASTNode {
+    private GlobalVarsNode globalVars;
+    private AlgoNode algo;
+    private FunctionsNode functions;
+
+    public ProgramNode(GlobalVarsNode globalVars, AlgoNode algo, FunctionsNode functions) {
+        this.globalVars = globalVars;
+        this.algo = algo;
+        this.functions = functions;
+    }
+
+    @Override
+    public String generateCode() {
+        StringBuilder code = new StringBuilder();
+        code.append(globalVars.generateCode());
+        code.append(functions.generateCode());
+        code.append(algo.generateCode());
+        return code.toString();
+    }
+}
+
+// Global Variables Node
+class GlobalVarsNode extends ASTNode {
+    private List<VarDeclNode> vars;
+
+    public GlobalVarsNode(List<VarDeclNode> vars) {
+        this.vars = vars;
+    }
+
+    @Override
+    public String generateCode() {
+        StringBuilder code = new StringBuilder();
+        for (VarDeclNode var : vars) {
+            code.append(var.generateCode()).append("\n");
+        }
+        return code.toString();
+    }
+}
+
+// Variable Declaration Node
+class VarDeclNode extends ASTNode {
+    private String type;
+    private String name;
+
+    public VarDeclNode(String type, String name) {
+        this.type = type;
+        this.name = name;
+    }
+
+    @Override
+    public String generateCode() {
+        return type + " " + name + ";";
+    }
+}
+
+// Algorithm Node
+class AlgoNode extends ASTNode {
+    private List<InstructionNode> instructions;
+
+    public AlgoNode(List<InstructionNode> instructions) {
+        this.instructions = instructions;
+    }
+
+    @Override
+    public String generateCode() {
+        StringBuilder code = new StringBuilder("begin\n");
+        for (InstructionNode instruction : instructions) {
+            code.append(instruction.generateCode()).append("\n");
+        }
+        code.append("end\n");
+        return code.toString();
+    }
+}
+
+// Instruction Node (Abstract)
+abstract class InstructionNode extends ASTNode {}
+
+// Assignment Node
+class AssignNode extends InstructionNode {
+    private String variable;
+    private String expression;
+
+    public AssignNode(String variable, String expression) {
+        this.variable = variable;
+        this.expression = expression;
+    }
+
+    @Override
+    public String generateCode() {
+        return variable + " = " + expression + ";";
+    }
+}
+
+// Print Node
+class PrintNode extends InstructionNode {
+    private String variable;
+
+    public PrintNode(String variable) {
+        this.variable = variable;
+    }
+
+    @Override
+    public String generateCode() {
+        return "print " + variable + ";";
+    }
+}
+
+// Function Call Node
+class FunctionCallNode extends InstructionNode {
+    private String functionName;
+    private List<String> parameters;
+
+    public FunctionCallNode(String functionName, List<String> parameters) {
+        this.functionName = functionName;
+        this.parameters = parameters;
+    }
+
+    @Override
+    public String generateCode() {
+        return functionName + "(" + String.join(", ", parameters) + ");";
+    }
+}
+
+// Function Node
+class FunctionNode extends ASTNode {
+    private String returnType;
+    private String name;
+    private List<String> parameters;
+    private AlgoNode body;
+
+    public FunctionNode(String returnType, String name, List<String> parameters, AlgoNode body) {
+        this.returnType = returnType;
+        this.name = name;
+        this.parameters = parameters;
+        this.body = body;
+    }
+
+    @Override
+    public String generateCode() {
+        StringBuilder code = new StringBuilder(returnType + " " + name + "(");
+        code.append(String.join(", ", parameters)).append(") {\n");
+        code.append(body.generateCode());
+        code.append("}\n");
+        return code.toString();
+    }
+}
+
+// Functions Node
+class FunctionsNode extends ASTNode {
+    private List<FunctionNode> functions;
+
+    public FunctionsNode(List<FunctionNode> functions) {
+        this.functions = functions;
+    }
+
+    @Override
+    public String generateCode() {
+        StringBuilder code = new StringBuilder();
+        for (FunctionNode function : functions) {
+            code.append(function.generateCode()).append("\n");
+        }
+        return code.toString();
+    }
+}
+
+// Main Class
 public class CodeGenerator {
-    private List<String> code; // Stores generated code instructions
-    private int labelCounter;  // Used for generating unique labels for jumps
-
-    public CodeGenerator() {
-        this.code = new ArrayList<>();
-        this.labelCounter = 0;
-    }
-
-    // Generate code for the entire program by traversing the syntax tree
-    public void generate(Node root) {
-        generateNode(root);
-    }
-
-    // Recursive method to traverse the syntax tree and generate code
-    private void generateNode(Node node) {
-        switch (node.type) {
-            case "Program":
-                // Program node: Traverse globals, algorithm, and functions
-                generateNode(node.children.get(0)); // Global variables
-                generateNode(node.children.get(1)); // Algorithm
-                generateNode(node.children.get(2)); // Functions
-                break;
-
-            case "GlobalVars":
-                // Handle global variable declarations
-                for (Node var : node.children) {
-                    code.add("MOV " + var.value + ", 0"); // Initialize to 0
-                }
-                break;
-
-            case "Algorithm":
-                // Handle algorithm/instruction block
-                for (Node instr : node.children) {
-                    generateNode(instr);
-                }
-                break;
-
-            case "Assign":
-                // Generate assignment instructions: MOV V_x, value
-                String varName = node.children.get(0).value;
-                String value = node.children.get(1).value;
-                code.add("MOV " + varName + ", " + value);
-                break;
-
-            case "InputAssign":
-                // Handle input assignments: INPUT V_x
-                code.add("INPUT " + node.children.get(0).value);
-                break;
-
-            case "Print":
-                // Handle print instructions: PRINT value
-                code.add("PRINT " + node.children.get(0).value);
-                break;
-
-            case "Branch":
-                // Handle if-else branching
-                String labelTrue = generateLabel();
-                String labelEnd = generateLabel();
-
-                generateCondition(node.children.get(0), labelTrue);
-                generateNode(node.children.get(2)); // Else block (if exists)
-                code.add("GOTO " + labelEnd);
-
-                code.add(labelTrue + ":");
-                generateNode(node.children.get(1)); // Then block
-                code.add(labelEnd + ":");
-                break;
-
-            case "FunctionDeclaration":
-                // Handle function declarations
-                String funcName = node.children.get(0).value;
-                code.add(funcName + ":"); // Function label
-                generateNode(node.children.get(2)); // Local variables
-                generateNode(node.children.get(3)); // Function body
-                code.add("RET 0"); // Return from function
-                break;
-
-            case "FunctionCall":
-                // Generate function calls: CALL F_name
-                String functionName = node.children.get(0).value;
-                code.add("CALL " + functionName);
-                break;
-
-            case "BinaryOperation":
-                // Generate binary operations: ADD, SUB, MUL, DIV
-                String op = getOperatorCode(node.value);
-                String left = node.children.get(0).value;
-                String right = node.children.get(1).value;
-                code.add(op + " " + left + ", " + right);
-                break;
-
-            case "UnaryOperation":
-                // Generate unary operations: NOT, SQRT
-                String operand = node.children.get(0).value;
-                if (node.value.equals("sqrt")) {
-                    code.add("SQRT " + operand);
-                } else if (node.value.equals("not")) {
-                    code.add("NOT " + operand);
-                }
-                break;
-
-            default:
-                throw new RuntimeException("Unknown node type: " + node.type);
-        }
-    }
-
-    // Generate code for conditions (used in if-else branching)
-    private void generateCondition(Node condition, String labelTrue) {
-        String left = condition.children.get(0).value;
-        String right = condition.children.get(1).value;
-        String operator = getComparisonOperator(condition.value);
-        code.add("IF " + left + " " + operator + " " + right + " GOTO " + labelTrue);
-    }
-
-    // Map RecSPL comparison operators to code equivalents
-    private String getComparisonOperator(String operator) {
-        switch (operator) {
-            case "eq": return "==";
-            case "grt": return ">";
-            default: throw new RuntimeException("Unknown comparison operator: " + operator);
-        }
-    }
-
-    // Map RecSPL arithmetic operators to code equivalents
-    private String getOperatorCode(String operator) {
-        switch (operator) {
-            case "add": return "ADD";
-            case "sub": return "SUB";
-            case "mul": return "MUL";
-            case "div": return "DIV";
-            default: throw new RuntimeException("Unknown operator: " + operator);
-        }
-    }
-
-    // Generate a unique label for branching
-    private String generateLabel() {
-        return "L" + (labelCounter++);
-    }
-
-    // Print the generated code
-    public void printCode() {
-        for (String instruction : code) {
-            System.out.println(instruction);
-        }
-    }
-
-    // Node class for syntax tree
-    public static class Node {
-        String type;
-        String value;
-        List<Node> children;
-
-        public Node(String type, String value) {
-            this.type = type;
-            this.value = value;
-            this.children = new ArrayList<>();
-        }
-
-        public Node(String type, Node... children) {
-            this.type = type;
-            this.children = Arrays.asList(children);
-        }
-    }
-
-    // Test the code generator
     public static void main(String[] args) {
-        /*// Example syntax tree
-        Node program = new Node("Program",
-                new Node("GlobalVars", new Node("Var", "V_x")),
-                new Node("Algorithm", new Node("Assign", new Node("V_x"), new Node("5"))),
-                new Node("Functions")
-        );
+        // Construct AST
+        List<VarDeclNode> globalVars = new ArrayList<>();
+        globalVars.add(new VarDeclNode("num", "V_number"));
 
-        CodeGenerator generator = new CodeGenerator();
-        generator.generate(program);
-        generator.printCode();*/
+        List<InstructionNode> instructions = new ArrayList<>();
+        instructions.add(new AssignNode("V_number", "add(0.03, 2)"));
+        instructions.add(new PrintNode("V_number"));
 
-        
+        AlgoNode algo = new AlgoNode(instructions);
 
+        List<FunctionNode> functions = new ArrayList<>();
+        List<String> funcParams = new ArrayList<>();
+        funcParams.add("V_first");
+        funcParams.add("V_second");
+        funcParams.add("V_third");
+        functions.add(new FunctionNode("void", "F_test", funcParams, new AlgoNode(new ArrayList<>())));
 
+        // Create Program Node
+        ProgramNode program = new ProgramNode(new GlobalVarsNode(globalVars), algo, new FunctionsNode(functions));
 
+        // Generate BASIC Code
+        String basicCode = program.generateCode();
+        System.out.println(basicCode);
     }
 }
