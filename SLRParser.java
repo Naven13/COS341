@@ -3,13 +3,16 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.util.*;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class SLRParser {
     // Grammar rules and parsing table data structures
     static List<String[]> grammar = new ArrayList<>();
     static Map<Integer, Map<String, String>> actionTable = new HashMap<>();
     static Map<Integer, Map<String, Integer>> gotoTable = new HashMap<>();
-
+    public static StringBuilder inputAST = new StringBuilder(); // Global AST
     
     // Method to read tokens from the XML file and build the input string array
     public static String[] readTokensFromXML(String xmlFilePath) {
@@ -982,10 +985,9 @@ public class SLRParser {
         Stack<Integer> stateStack = new Stack<>();
         Stack<String> symbolStack = new Stack<>();
         stateStack.push(0);  // Start state
-    
-        StringBuilder inputAST = new StringBuilder(); // To build the AST string
+
         int pointer = 0;
-    
+
         while (pointer < input.length) {
             System.out.println("State Stack: " + stateStack);
             System.out.println("Symbol Stack: " + symbolStack);
@@ -994,10 +996,10 @@ public class SLRParser {
             System.out.println("Current State: " + currentState);
             String symbol = input[pointer];
             System.out.println("Symbol: " + symbol);
-    
+
             // Get action from action table
             String action = actionTable.getOrDefault(currentState, new HashMap<>()).get(symbol);
-    
+
             if (action == null) {
                 // Error: Unexpected symbol
                 System.out.println("Error: Unexpected symbol '" + symbol + "'.");
@@ -1020,18 +1022,18 @@ public class SLRParser {
                 String[] rule = grammar.get(ruleIndex);
                 String lhs = rule[0];  // Left-hand side of the grammar rule
                 String rhs = rule[1];  // Right-hand side of the grammar rule (could be empty)
-    
+
                 System.out.println("Reducing using rule " + ruleIndex + ": " + lhs + " -> " + rhs);
-    
+
                 // Determine how many symbols to pop
                 int popCount = rhs.equals("") ? 0 : rhs.split(" ").length;
-    
+
                 // Pop states and symbols
                 for (int i = 0; i < popCount; i++) {
                     stateStack.pop();
                     symbolStack.pop();  // Pop from symbol stack as well
                 }
-    
+
                 // Push the LHS non-terminal onto the symbol stack
                 symbolStack.push(lhs);
                 inputAST.append(lhs).append(" "); // Append LHS to AST
@@ -1043,7 +1045,7 @@ public class SLRParser {
                         inputAST.append(token).append(" "); // Append RHS tokens to AST
                     }
                 }
-    
+
                 // Get the next state from the goto table
                 int topState = stateStack.peek();
                 Integer gotoState = gotoTable.getOrDefault(topState, new HashMap<>()).get(lhs);
@@ -1052,7 +1054,7 @@ public class SLRParser {
                     return false;
                 }
                 stateStack.push(gotoState);  // Push the new state from the GOTO table
-    
+
             } else if (action.equals("ACC")) {
                 // Accept operation
                 System.out.println("Input successfully parsed.");
@@ -1060,12 +1062,9 @@ public class SLRParser {
                 return true;
             }
         }
-    
+
         return false;
     }
-    
-    
-    
     
 
 }

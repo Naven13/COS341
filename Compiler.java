@@ -32,6 +32,7 @@ public class Compiler {
             System.out.println("Parsing failed.");
         }
 
+        System.out.println(SLRParser.inputAST);
         // Scope Analyzer
         //ScopeAnalyzer scopeAnalyzer = new ScopeAnalyzer();
         //analyzeScopes(ast, scopeAnalyzer);
