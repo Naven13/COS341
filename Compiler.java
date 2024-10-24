@@ -36,7 +36,7 @@ public class Compiler {
 
             // Scope Analyzer
             ScopeAnalyzer scopeAnalyzer = new ScopeAnalyzer();
-            scopeAnalyzer.analyze(syntaxTree); // Analyze scopes based on the syntax tree
+            scopeAnalyzer.analyze(SLRParser.inputValue); // Analyze scopes based on the syntax tree
             // If you want to print the scopes, implement a printScopes method in ScopeAnalyzer
             //scopeAnalyzer.printScopes(); // Print the symbol table or scopes
             

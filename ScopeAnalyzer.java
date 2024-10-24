@@ -1,114 +1,124 @@
-import org.w3c.dom.*; // XML parsing libraries
-import javax.xml.parsers.*;
-import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class ScopeAnalyzer {
-    private SymbolTable symbolTable; // A simple stack-based symbol table for scope management
-    private static Map<Integer, ASTNode> nodeMap; // To link syntax tree nodes
-    private int variableCounter = 0; // Counter for generating unique variable names
-    private int functionCounter = 0; // Counter for generating unique function names
-
-    // List of keywords to ignore
-    private static final String[] KEYWORDS = {
-        "IF", "THEN", "ELSE", "PRINT", "HALT", 
-        "BEGIN", "END", "MAIN", "TYPE", "SKIP", 
-        "FUNCTION", "RETURN", "INPUT", "num", "text"
-    };
+    private SymbolTable symbolTable;
+    private static final Set<String> RESERVED_KEYWORDS = new HashSet<>(Arrays.asList(
+        "if", "then", "else", "print", "halt", "begin", "end", "main", "type", "skip", "function", "return", "input"
+    ));
 
     public ScopeAnalyzer() {
         symbolTable = new SymbolTable();
-        nodeMap = new HashMap<>(); // Initialize the node map
     }
 
-    public void analyze(ASTNode root) {
-        // Start the tree crawling and populating the symbol table
-        traverseTree(root);
-    }
-
-    private void traverseTree(ASTNode node) {
-        if (node == null) return;
-
-        String symbol = node.getSymbol();
-
-        // Handle scope entering and exiting
-        if (symbol.equals("BEGIN_SCOPE")) {
-            symbolTable.enterScope();
-            System.out.println("Entered a new scope.");
-        } else if (symbol.equals("END_SCOPE")) {
-            symbolTable.exitScope();
-            System.out.println("Exited scope.");
+    public void analyze(List<String> inputValue) {
+        if (inputValue == null || inputValue.isEmpty()) {
+            System.out.println("Error: The input value is empty.");
+            return;
         }
 
-        // Handle variable and function declarations
-        if (symbol.equals("V")) { // Variable declaration
-            String variableName = node.getName(); // Use the ASTNode's name directly
+        // Start processing the inputValue list
+        processScopes(inputValue);
+        
+        // Print the symbol table for debugging
+        printSymbolTable();
+    }
 
-            // Check if the name is a keyword or does not start with V_
-            if (isKeyword(variableName) || !variableName.startsWith("V_")) {
-                System.out.println("Ignoring invalid variable name: '" + variableName + "'.");
-                // Instead of returning, we log and continue
-            } else {
-                // Check for redeclaration in the current scope
-                if (!symbolTable.addVariable(variableName, "VariableType")) {
-                    System.out.println("Error: Variable '" + variableName + "' is already declared in this scope.");
+    private void processScopes(List<String> inputValue) {
+        Stack<String> scopeStack = new Stack<>();
+        int unmatchedBeginCount = 0; // Count unmatched 'begin'
+        boolean unmatchedEnd = false; // Flag for unmatched 'end'
+
+        for (int i = 0; i < inputValue.size(); i++) {
+            String token = inputValue.get(i);
+            if (token.equals("begin")) {
+                scopeStack.push(token); // Push the current scope
+                symbolTable.enterScope(); // Enter a new scope
+                unmatchedBeginCount++;
+            } else if (token.equals("end")) {
+                if (!scopeStack.isEmpty()) {
+                    scopeStack.pop(); // Pop the matching begin scope
+                    symbolTable.exitScope(); // Exit the current scope
+                    unmatchedBeginCount--;
                 } else {
-                    String uniqueName = getUniqueVariableName(variableName);
-                    symbolTable.addVariable(node.getUNID(), uniqueName); // Add with unique name
-                    System.out.println("Variable declared: " + uniqueName);
+                    unmatchedEnd = true; // Mark that we have an unmatched end
                 }
-            }
-
-        } else if (symbol.equals("F")) { // Function declaration
-            String functionName = node.getName(); // Use the ASTNode's name directly
-
-            // Check if the name is a keyword or does not start with F_
-            if (isKeyword(functionName) || !functionName.startsWith("F_")) {
-                System.out.println("Ignoring invalid function name: '" + functionName + "'.");
-                // Instead of returning, we log and continue
             } else {
-                // Check for redeclaration in the current scope
-                if (!symbolTable.addFunction(functionName, "FunctionReturnType")) {
-                    System.out.println("Error: Function '" + functionName + "' is already declared in this scope.");
+                // Handle function and variable declarations
+                if (isAssignment(inputValue, i)) {
+                    // Skip the assignment handling
+                    i += 2; // Skip over the variable, assignment operator, and value
                 } else {
-                    String uniqueName = getUniqueFunctionName(functionName);
-                    symbolTable.addFunction(node.getUNID(), uniqueName); // Add with unique name
-                    System.out.println("Function declared: " + uniqueName);
+                    handleDeclaration(token);
                 }
             }
         }
 
-        // Recursively visit children
-        for (ASTNode child : node.getChildren()) {
-            traverseTree(child);
-        }
-
-        // Exit scope after all children are visited
-        if (symbol.equals("BEGIN_SCOPE") || symbol.equals("END_SCOPE")) {
-            symbolTable.exitScope();
-            System.out.println("Exited scope after traversing children.");
+        // Check for unmatched begins after processing all tokens
+        if (!scopeStack.isEmpty() || unmatchedEnd) {
+            if (unmatchedEnd) {
+                //System.out.println("Error: Unmatched 'end' found.");
+            }
+            if (unmatchedBeginCount > 0) {
+                //System.out.println("Error: Unmatched 'begin' found.");
+            }
         }
     }
 
-    private boolean isKeyword(String name) {
-        for (String keyword : KEYWORDS) {
-            if (keyword.equalsIgnoreCase(name)) {
-                return true;
-            }
+    private boolean isAssignment(List<String> inputValue, int index) {
+        // Check if the current token is a variable followed by '='
+        if (index < inputValue.size() - 2) { // Ensure we won't go out of bounds
+            String token = inputValue.get(index);
+            String nextToken = inputValue.get(index + 1);
+            return token.startsWith("V_") && nextToken.equals("=");
         }
         return false;
     }
 
-    private String getUniqueVariableName(String baseName) {
-        // Generate a unique variable name using the counter
-        return "v" + (variableCounter++);
+    private void handleDeclaration(String token) {
+        // Check if it's a variable or function based on naming conventions
+        if (token.startsWith("V_")) { // Variable declaration
+            String variableName = token.substring(0);
+
+            // Check against reserved keywords
+            if (RESERVED_KEYWORDS.contains(variableName)) {
+                System.out.println("Error: Variable name '" + variableName + "' is a reserved keyword.");
+                return;
+            }
+
+            // Check if the variable name is the same as any function name
+            if (symbolTable.isFunction(variableName)) {
+                System.out.println("Error: Variable name '" + variableName + "' cannot be the same as a function name.");
+                return;
+            }
+
+            if (!symbolTable.addVariable(variableName, "VariableType")) {
+                System.out.println("Error: Variable '" + variableName + "' is already declared in this scope.");
+            } else {
+                System.out.println("Variable declared: " + variableName);
+            }
+        } else if (token.startsWith("F_")) { // Function declaration
+            String functionName = token.substring(0);
+
+            // Check if the function name is the same as any variable name
+            if (symbolTable.lookupVariable(functionName) != null) {
+                System.out.println("Error: Function name '" + functionName + "' cannot be the same as a variable name.");
+                return;
+            }
+
+            if (!symbolTable.addFunction(functionName, "FunctionReturnType")) {
+                System.out.println("Error: Function '" + functionName + "' is already declared in this scope.");
+            } else {
+                System.out.println("Function declared: " + functionName);
+            }
+        }
     }
 
-    private String getUniqueFunctionName(String baseName) {
-        // Generate a unique function name using the counter
-        return "f" + (functionCounter++);
+    // Print the symbol table contents for debugging
+    private void printSymbolTable() {
+        System.out.println("Symbol Table Contents:");
+        Stack<Map<String, String>> scopes = symbolTable.getScopes();
+        for (int i = 0; i < scopes.size(); i++) {
+            System.out.println("Scope " + i + ": " + scopes.get(i));
+        }
     }
-
-    // Method for loading the syntax tree, not shown for brevity
 }

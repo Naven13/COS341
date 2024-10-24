@@ -1140,8 +1140,7 @@ public class SLRParser {
         }
         return false;
     }
-    
-    
+
     
     private static void generateXML() {
         StringBuilder xmlBuilder = new StringBuilder();
@@ -1163,13 +1162,14 @@ public class SLRParser {
         xmlBuilder.append("</SYNTREE>");
     
         // Output the generated XML
-        System.out.println(xmlBuilder.toString());
+        //System.out.println(xmlBuilder.toString());
     }
     
     private static void generateRoot(StringBuilder xmlBuilder, ASTNode root) {
         xmlBuilder.append("<ROOT>\n");
         xmlBuilder.append("<UNID>").append(root.getUNID()).append("</UNID>\n");
-        xmlBuilder.append("<>").append(root.getSymbol()).append("</SYMB>\n");
+        xmlBuilder.append("<SYMB>").append(root.getSymbol()).append("</SYMB>\n");
+        xmlBuilder.append("<NAME>").append(root.getName()).append("</NAME>\n"); // Include name
         xmlBuilder.append("<CHILDREN>\n");
         for (ASTNode child : root.getChildren()) {
             xmlBuilder.append("<ID>").append(child.getUNID()).append("</ID>\n");
@@ -1185,6 +1185,7 @@ public class SLRParser {
                 xmlBuilder.append("<PARENT>").append(node.getUNID()).append("</PARENT>\n");
                 xmlBuilder.append("<UNID>").append(child.getUNID()).append("</UNID>\n");
                 xmlBuilder.append("<SYMB>").append(child.getSymbol()).append("</SYMB>\n");
+                xmlBuilder.append("<NAME>").append(child.getName()).append("</NAME>\n"); // Include name
                 xmlBuilder.append("<CHILDREN>\n");
                 for (ASTNode grandChild : child.getChildren()) {
                     xmlBuilder.append("<ID>").append(grandChild.getUNID()).append("</ID>\n");
@@ -1203,6 +1204,7 @@ public class SLRParser {
                 xmlBuilder.append("<PARENT>").append(node.getUNID()).append("</PARENT>\n");
                 xmlBuilder.append("<UNID>").append(child.getUNID()).append("</UNID>\n");
                 xmlBuilder.append("<TERMINAL>").append(child.getSymbol()).append("</TERMINAL>\n");
+                xmlBuilder.append("<NAME>").append(child.getName()).append("</NAME>\n"); // Include name
                 xmlBuilder.append("</LEAF>\n");
             } else {
                 generateLeafNodes(xmlBuilder, child); // Recurse for deeper leaf nodes
