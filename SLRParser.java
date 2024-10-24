@@ -1169,7 +1169,7 @@ public class SLRParser {
     private static void generateRoot(StringBuilder xmlBuilder, ASTNode root) {
         xmlBuilder.append("<ROOT>\n");
         xmlBuilder.append("<UNID>").append(root.getUNID()).append("</UNID>\n");
-        xmlBuilder.append("<SYMB>").append(root.getSymbol()).append("</SYMB>\n");
+        xmlBuilder.append("<>").append(root.getSymbol()).append("</SYMB>\n");
         xmlBuilder.append("<CHILDREN>\n");
         for (ASTNode child : root.getChildren()) {
             xmlBuilder.append("<ID>").append(child.getUNID()).append("</ID>\n");
