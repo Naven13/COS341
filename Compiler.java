@@ -40,9 +40,15 @@ public class Compiler {
             // If you want to print the scopes, implement a printScopes method in ScopeAnalyzer
             //scopeAnalyzer.printScopes(); // Print the symbol table or scopes
             
-            // // Type Checker
-            // TypeChecker typeChecker = new TypeChecker();
-            // //checkTypes(syntaxTree, typeChecker); // Check types based on the syntax tree
+            //TypeChecker
+            TypeChecker typeChecker = new TypeChecker();
+            boolean typeCheckResult = typeChecker.typecheck(syntaxTree); // Check types based on the syntax tree
+
+            if (typeCheckResult) {
+                System.out.println("Type checking passed successfully.");
+            } else {
+                System.out.println("Type checking failed.");
+            }
 
 
             

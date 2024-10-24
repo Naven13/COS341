@@ -57,11 +57,11 @@ class ASTNode {
 
     // Improved printTree method to print the tree structure with IDs
     public void printTree(String prefix, boolean isTail) {
-        System.out.println(prefix + (isTail ? "└── " : "├── ") + symbol + " (ID: " + unid + ")" + " (Name: " + name + ")"); // Corrected to use 'symbol' and 'unid'
+        System.out.println(prefix + (isTail ? "|____ " : "|---- ") + symbol + " (ID: " + unid + ")" + " (Name: " + name + ")"); // Corrected to use 'symbol' and 'unid'
         
         for (int i = 0; i < children.size(); i++) {
             // Recursively print each child, updating the prefix
-            children.get(i).printTree(prefix + (isTail ? "    " : "│   "), i == children.size() - 1);
+            children.get(i).printTree(prefix + (isTail ? "    " : "|   "), i == children.size() - 1);
         }
     }
 

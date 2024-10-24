@@ -4,6 +4,7 @@ public enum TokenType {
     CONST,      // Numeric Constant
     TEXT,       // Text Constant
     VOID,
+    NUM,
 
     // Keywords
     IF,         // Keyword: if
