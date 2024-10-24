@@ -4,8 +4,8 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ScopeAnalyzer {
-    private SymbolTable symbolTable; // A simple hash table for symbol storage
+public class ScopeAnalyzer extends SLRParser {
+    private SymbolTable symbolTable; // A simple stack-based symbol table for scope management
     private static Map<Integer, ASTNode> nodeMap; // To link syntax tree nodes
     private int variableCounter = 0; // Counter for generating unique variable names
     private int functionCounter = 0; // Counter for generating unique function names
@@ -27,23 +27,85 @@ public class ScopeAnalyzer {
         if (node == null) return;
 
         String symbol = node.getSymbol();
-        // Here we handle different symbols
+
+        // Handle scope entering and exiting
+        if (symbol.equals("BEGIN_SCOPE")) {
+            symbolTable.enterScope();
+            System.out.println("Entered a new scope.");
+        } else if (symbol.equals("END_SCOPE")) {
+            symbolTable.exitScope();
+            System.out.println("Exited scope.");
+        }
+
+        // Handle variable and function declarations
         if (symbol.equals("V")) { // Variable declaration
-            String variableName = node.getSymbol(); // Assuming the variable name is stored in the symbol
-            String uniqueName = getUniqueVariableName(variableName);
-            symbolTable.addVariable(node.getUNID(), uniqueName); // Use node ID as foreign key
-            System.out.println("Variable declared: " + uniqueName);
+            String variableName = node.getName(); // Use the ASTNode's name directly
+
+            // Ignore the variable names ",", "num", and "text" and skip further processing
+            if (variableName.equals(",") || variableName.equals("num") || variableName.equals("text") || variableName.equals("main")) {
+                return; // Skip these variable names
+            }
+
+            // Validate the variable name before processing
+            if (!isValidIdentifier(variableName)) {
+                System.out.println("Error: Invalid variable name '" + variableName + "'.");
+                return; // Skip invalid names
+            }
+
+            // Check for redeclaration in the current scope
+            if (!symbolTable.addVariable(variableName, "VariableType")) {
+                System.out.println("Error: Variable '" + variableName + "' is already declared in this scope.");
+            } else {
+                String uniqueName = getUniqueVariableName(variableName);
+                symbolTable.addVariable(node.getUNID(), uniqueName); // Add with unique name
+                System.out.println("Variable declared: " + uniqueName);
+            }
+
         } else if (symbol.equals("F")) { // Function declaration
-            String functionName = node.getSymbol(); // Assuming the function name is stored in the symbol
-            String uniqueName = getUniqueFunctionName(functionName);
-            symbolTable.addFunction(node.getUNID(), uniqueName); // Use node ID as foreign key
-            System.out.println("Function declared: " + uniqueName);
+            String functionName = node.getName(); // Use the ASTNode's name directly
+
+            // Validate the function name before processing
+            if (!isValidIdentifier(functionName)) {
+                System.out.println("Error: Invalid function name '" + functionName + "'.");
+                return; // Skip invalid names
+            }
+
+            // Check for redeclaration in the current scope
+            if (!symbolTable.addFunction(functionName, "FunctionReturnType")) {
+                System.out.println("Error: Function '" + functionName + "' is already declared in this scope.");
+            } else {
+                String uniqueName = getUniqueFunctionName(functionName);
+                symbolTable.addFunction(node.getUNID(), uniqueName); // Add with unique name
+                System.out.println("Function declared: " + uniqueName);
+            }
         }
 
         // Recursively visit children
         for (ASTNode child : node.getChildren()) {
             traverseTree(child);
         }
+
+        // Exit scope after all children are visited
+        if (symbol.equals("BEGIN_SCOPE") || symbol.equals("END_SCOPE")) {
+            symbolTable.exitScope();
+            System.out.println("Exited scope after traversing children.");
+        }
+    }
+
+    private boolean isValidIdentifier(String name) {
+        // Validate the identifier name (variable or function)
+        // Example validation: must start with a letter and can contain letters, digits, or underscores
+        if (name == null || name.isEmpty()) return false;
+
+        // Check if the first character is a letter or underscore
+        if (!Character.isLetter(name.charAt(0)) && name.charAt(0) != '_') return false;
+
+        // Check the rest of the characters
+        for (int i = 1; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (!Character.isLetterOrDigit(c) && c != '_') return false;
+        }
+        return true;
     }
 
     private String getUniqueVariableName(String baseName) {
@@ -70,9 +132,10 @@ public class ScopeAnalyzer {
                 Element element = (Element) nodeList.item(i);
                 int id = Integer.parseInt(element.getAttribute("id")); // Get the unique ID
                 String symbol = element.getAttribute("symbol"); // Get the symbol type (e.g., V or F)
+                String name = element.getAttribute("name"); // Retrieve the name for variable/function
 
                 // Create a new ASTNode with the retrieved values
-                ASTNode astNode = new ASTNode(symbol, id);
+                ASTNode astNode = new ASTNode(symbol, name, id); // Assuming you modify ASTNode to include name
                 nodeMap.put(id, astNode); // Add the node to the nodeMap
 
                 // Handle child nodes

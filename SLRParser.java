@@ -7,6 +7,7 @@ import java.util.*;
 class ASTNode {
     private String symbol; // Non-terminal symbol or terminal token
     private int unid; // Unique Node ID
+    private String name;
     private List<ASTNode> children; // List of child nodes
     private int parentId; // Parent Node ID
     
@@ -15,6 +16,13 @@ class ASTNode {
         this.unid = unid;
         this.children = new ArrayList<>();
         this.parentId = -1; // Set to -1 initially
+    }
+
+    public ASTNode(String symbol, String name, int id) {
+        this.symbol = symbol;
+        this.name = name;
+        this.unid = id;
+        this.children = new ArrayList<>();
     }
 
     public void addChild(ASTNode child) {
@@ -42,10 +50,14 @@ class ASTNode {
         return children;
     }
 
+    public String getName() {
+        return name;
+    }
+
 
     // Improved printTree method to print the tree structure with IDs
     public void printTree(String prefix, boolean isTail) {
-        System.out.println(prefix + (isTail ? "└── " : "├── ") + symbol + " (ID: " + unid + ")"); // Corrected to use 'symbol' and 'unid'
+        System.out.println(prefix + (isTail ? "└── " : "├── ") + symbol + " (ID: " + unid + ")" + " (Name: " + name + ")"); // Corrected to use 'symbol' and 'unid'
         
         for (int i = 0; i < children.size(); i++) {
             // Recursively print each child, updating the prefix
@@ -55,7 +67,7 @@ class ASTNode {
 
     @Override
     public String toString() {
-        return symbol; // Simple string representation for debugging
+        return symbol;
     }
     
 }
@@ -66,10 +78,12 @@ public class SLRParser {
     static Map<Integer, Map<String, String>> actionTable = new HashMap<>();
     static Map<Integer, Map<String, Integer>> gotoTable = new HashMap<>();
     private static ASTNode syntaxTree; // Root of the syntax tree
+    public static ASTNode valueTree; // Root of the value tree AST
+    public static List<String> inputValue = new ArrayList<>();
     private static Map<Integer, ASTNode> nodeMap = new HashMap<>();
 
 
-
+    
     
     // Method to read tokens from the XML file and build the input string array
     public static String[] readTokensFromXML(String xmlFilePath) {
@@ -88,6 +102,7 @@ public class SLRParser {
                 String tokenWord = tokenElement.getElementsByTagName("WORD").item(0).getTextContent();
 
                 String tokenString = tokenWord;  // Default to the token word itself
+                String tokenValue = tokenWord;
 
                 // Map token classes to specific symbols
                 if (tokenClass.equals("V")) {
@@ -104,6 +119,7 @@ public class SLRParser {
 
                 // Add the processed token to the input list
                 inputList.add(tokenString);
+                inputValue.add(tokenValue);
             }
 
             if (!inputList.contains("$")) {
@@ -1045,6 +1061,9 @@ public class SLRParser {
     
         int pointer = 0;
         int nodeIdCounter = 0; // Counter for unique node IDs
+        int variableIndex = 0; // Counter for variables
+        int functionIndex = 0; // Counter for functions
+    
         while (pointer < input.length) {
             int currentState = stateStack.peek();
             String symbol = input[pointer];
@@ -1058,7 +1077,27 @@ public class SLRParser {
             } else if (action.startsWith("S")) {
                 // Shift operation
                 int nextState = Integer.parseInt(action.substring(1));
-                ASTNode newNode = new ASTNode(symbol, nodeIdCounter++); // Create a new ASTNode
+                String name = ""; // Default name
+    
+                // Check if the current symbol represents a variable or function
+                if (symbol.equals("V")) {
+                    if (variableIndex < inputValue.size()) {
+                        name = inputValue.get(variableIndex++); // Get the actual variable name
+                    } else {
+                        System.out.println("Error: Variable index out of bounds.");
+                        return false; // Prevent out-of-bounds access
+                    }
+                } else if (symbol.equals("F")) {
+                    if (functionIndex < inputValue.size()) {
+                        name = inputValue.get(functionIndex++); // Get the actual function name
+                    } else {
+                        System.out.println("Error: Function index out of bounds.");
+                        return false; // Prevent out-of-bounds access
+                    }
+                }
+    
+                // Create a new ASTNode with symbol and name
+                ASTNode newNode = new ASTNode(symbol, name, nodeIdCounter++);
                 nodeMap.put(newNode.getUNID(), newNode); // Add the node to the nodeMap
                 stateStack.push(nextState);
                 symbolStack.push(newNode); // Push symbol with unique ID
@@ -1081,7 +1120,7 @@ public class SLRParser {
                 }
     
                 // Create a new AST node for the LHS
-                ASTNode newNode = new ASTNode(lhs, nodeIdCounter++);
+                ASTNode newNode = new ASTNode(lhs, "", nodeIdCounter++); // LHS has no name
                 for (ASTNode child : children) {
                     newNode.addChild(child); // Add children to the new node
                 }
@@ -1101,6 +1140,7 @@ public class SLRParser {
         }
         return false;
     }
+    
     
     
     private static void generateXML() {

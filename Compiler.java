@@ -19,6 +19,8 @@ public class Compiler {
         SLRParser.initializeGrammar(); // Ensure this method sets up your grammar
         SLRParser.initializeParsingTables(); // Initialize parsing tables
         String[] input = SLRParser.readTokensFromXML("output.xml");
+        System.out.println(SLRParser.inputValue);
+        
 
         // Parse the input using the SLR table
         SLRParser parser = new SLRParser(); // Create an instance of SLRParser
