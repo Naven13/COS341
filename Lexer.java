@@ -12,13 +12,13 @@ public class Lexer {
 
     // Updated regex pattern for tokens according to RecSPL 2024 specification
     private static final Pattern TOKEN_PATTERN = Pattern.compile(
-        "(if|then|else|print|halt|begin|end|main|num|text|function|skip|not|sqrt|or|and|eq|grt|add|sub|mul|div|return|input)|" + 
-        "(V_[a-z][a-z0-9]*)|" + 
-        "(F_[a-z][a-z0-9]*)|" + 
-        "\"[^\"]*\"|" + 
-        "-?[0-9]+(\\.[0-9]+)?|" + 
-        "(=|<|>|\\+|-|\\*|/)|" + 
-        "(\\(|\\)|;|,|\\{|\\})"
+    "(if|then|else|print|halt|begin|end|main|num|text|function|skip|not|sqrt|or|and|eq|grt|add|sub|mul|div|return|input|void)|" + 
+    "(V_[a-z][a-z0-9]*)|" + 
+    "(F_[a-z][a-z0-9]*)|" + 
+    "\"[^\"]*\"|" + 
+    "-?[0-9]+(\\.[0-9]+)?|" + 
+    "(=|<|>|\\+|-|\\*|/)|" + 
+    "(\\(|\\)|;|,|\\{|\\})"
     );
 
     public Lexer(String input) {

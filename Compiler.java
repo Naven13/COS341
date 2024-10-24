@@ -3,10 +3,8 @@ import java.util.*;
 
 public class Compiler {
     public static void main(String[] args) {
-        
-        String sourceCode = readSourceCode("sample_code.txt");
-        //need to fix path for the executable file submission
-        
+        String sourceCode = readSourceCode("sample_code.txt"); // Ensure this path is correct
+
         // Lexer
         Lexer lexer = new Lexer(sourceCode);
         List<Lexer.Token> tokens = new ArrayList<>();
@@ -17,7 +15,8 @@ public class Compiler {
         }
         lexer.tokenize("output.xml");
 
-        SLRParser.initializeGrammar(); // Make sure you have this method to set up your grammar
+        // Initialize and parse using SLRParser
+        SLRParser.initializeGrammar(); // Ensure this method sets up your grammar
         SLRParser.initializeParsingTables(); // Initialize parsing tables
         String[] input = SLRParser.readTokensFromXML("output.xml");
 
@@ -28,29 +27,26 @@ public class Compiler {
         if (result) {
             System.out.println("Input is successfully parsed.");
             ASTNode syntaxTree = parser.getSyntaxTree(); // Get the syntax tree
+
             // Output the syntax tree
             System.out.println("Syntax Tree:");
             syntaxTree.printTree("", true); // Start with an empty prefix and true for the first node
+
+            // Scope Analyzer
+            ScopeAnalyzer scopeAnalyzer = new ScopeAnalyzer();
+            scopeAnalyzer.analyze(syntaxTree); // Analyze scopes based on the syntax tree
+            // If you want to print the scopes, implement a printScopes method in ScopeAnalyzer
+            //scopeAnalyzer.printScopes(); // Print the symbol table or scopes
+            
+            // // Type Checker
+            // TypeChecker typeChecker = new TypeChecker();
+            // //checkTypes(syntaxTree, typeChecker); // Check types based on the syntax tree
+
+
+            
         } else {
             System.out.println("Parsing failed.");
         }
-        
-        
-
-        //System.out.println(SLRParser.inputAST);
-        // Scope Analyzer
-        //ScopeAnalyzer scopeAnalyzer = new ScopeAnalyzer();
-        //analyzeScopes(ast, scopeAnalyzer);
-
-        // Type Checker
-        //TypeChecker typeChecker = new TypeChecker();
-        //checkTypes(ast, typeChecker);
-
-        // Code Generator
-        //CodeGenerator codeGenerator = new CodeGenerator();
-        //String targetCode = codeGenerator.generateCode(ast);
-        
-        //System.out.println(targetCode);
     }
 
     private static String readSourceCode(String path) {
@@ -61,54 +57,57 @@ public class Compiler {
         }
     }
 
-    private static void analyzeScopes(Parser.Node node, ScopeAnalyzer scopeAnalyzer) {
-        if (node.type.equals("Program")) {
-            scopeAnalyzer.enterScope();
-            for (Parser.Node child : node.children) {
-                analyzeScopes(child, scopeAnalyzer);
-            }
-            scopeAnalyzer.exitScope();
-        } else if (node.type.equals("GlobalVars")) {
-            for (Parser.Node var : node.children) {
-                scopeAnalyzer.declareVariable(var.children.get(0).type); // Assuming child is the var name
-            }
-        } else if (node.type.equals("FunctionDeclaration")) {
-            String funcName = node.children.get(0).type; // Function name
-            scopeAnalyzer.declareFunction(funcName);
-            scopeAnalyzer.enterScope();
-            for (Parser.Node param : node.children.get(1).children) {
-                scopeAnalyzer.declareVariable(param.children.get(0).type); // Parameter names
-            }
-            analyzeScopes(node.children.get(2), scopeAnalyzer); // Analyze function body
-            scopeAnalyzer.exitScope();
-        } else {
-            for (Parser.Node child : node.children) {
-                analyzeScopes(child, scopeAnalyzer);
-            }
-        }
-    }
+    // private static void analyzeScopes(ASTNode node, ScopeAnalyzer scopeAnalyzer) {
+    //     if (node.getValue().equals("Program")) {
+    //         scopeAnalyzer.enterScope();
+    //         for (ASTNode child : node.getChildren()) {
+    //             analyzeScopes(child, scopeAnalyzer);
+    //         }
+    //         scopeAnalyzer.exitScope();
+    //     } else if (node.getValue().equals("GlobalVars")) {
+    //         for (ASTNode var : node.getChildren()) {
+    //             scopeAnalyzer.declareVariable(var.getChildren().get(0).getValue()); // Assuming child is the var name
+    //         }
+    //     } else if (node.getValue().equals("FunctionDeclaration")) {
+    //         // Ensure you pass the correct values for return type and function name
+    //         String funcName = node.getChildren().get(1).getValue(); // Function name
+    //         String returnType = node.getChildren().get(0).getValue(); // Return type
+    //         scopeAnalyzer.declareFunction(funcName, returnType);
+    //         scopeAnalyzer.enterScope();
+    //         for (ASTNode param : node.getChildren().get(2).getChildren()) {
+    //             scopeAnalyzer.declareVariable(param.getChildren().get(0).getValue()); // Parameter names
+    //         }
+    //         analyzeScopes(node.getChildren().get(3), scopeAnalyzer); // Analyze function body
+    //         scopeAnalyzer.exitScope();
+    //     } else {
+    //         for (ASTNode child : node.getChildren()) {
+    //             analyzeScopes(child, scopeAnalyzer);
+    //         }
+    //     }
+    // }
+    
 
-    private static void checkTypes(Parser.Node node, TypeChecker typeChecker) {
-        if (node.type.equals("GlobalVars")) {
-            for (Parser.Node var : node.children) {
-                String varType = var.children.get(1).type; // Assuming second child is the type
-                typeChecker.declareVariable(var.children.get(0).type, varType);
-            }
-        } else if (node.type.equals("Assignment")) {
-            String varName = node.children.get(0).type; // Variable name
-            String valueType = node.children.get(1).type; // Value type
-            typeChecker.checkAssignment(varName, valueType);
-        } else if (node.type.equals("FunctionCall")) {
-            List<String> argTypes = new ArrayList<>();
-            for (Parser.Node arg : node.children) {
-                argTypes.add(arg.type); // Assuming each child represents the argument type
-            }
-            String funcName = node.children.get(0).type; // Function name
-            typeChecker.checkFunctionCall(funcName, argTypes);
-        } else {
-            for (Parser.Node child : node.children) {
-                checkTypes(child, typeChecker);
-            }
-        }  
-    }
+    // private static void checkTypes(ASTNode node, TypeChecker typeChecker) {
+    //     if (node.getValue().equals("GlobalVars")) {
+    //         for (ASTNode var : node.getChildren()) {
+    //             String varType = var.getChildren().get(1).getValue(); // Assuming second child is the type
+    //             typeChecker.declareVariable(var.getChildren().get(0).getValue(), varType); // Declare variable
+    //         }
+    //     } else if (node.getValue().equals("Assignment")) {
+    //         String varName = node.getChildren().get(0).getValue(); // Variable name
+    //         String valueType = node.getChildren().get(1).getValue(); // Value type
+    //         typeChecker.checkAssignment(varName, valueType);
+    //     } else if (node.getValue().equals("FunctionCall")) {
+    //         List<String> argTypes = new ArrayList<>();
+    //         for (ASTNode arg : node.getChildren()) {
+    //             argTypes.add(arg.getValue()); // Assuming each child represents the argument type
+    //         }
+    //         String funcName = node.getChildren().get(0).getValue(); // Function name
+    //         typeChecker.checkFunctionCall(funcName, argTypes);
+    //     } else {
+    //         for (ASTNode child : node.getChildren()) {
+    //             checkTypes(child, typeChecker);
+    //         }
+    //     }
+    // }
 }

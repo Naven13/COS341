@@ -5,30 +5,48 @@ import java.io.File;
 import java.util.*;
 
 class ASTNode {
-    private static int idCounter = 0; // Static counter for UniqueID
-    private final int uniqueID; // Unique ID for the node
-    String value; // Value or type of the node (e.g., operator, variable)
-    List<ASTNode> children; // Children of this node
-
-    public ASTNode(String value) {
-        this.value = value;
+    private String symbol; // Non-terminal symbol or terminal token
+    private int unid; // Unique Node ID
+    private List<ASTNode> children; // List of child nodes
+    private int parentId; // Parent Node ID
+    
+    public ASTNode(String symbol, int unid) {
+        this.symbol = symbol;
+        this.unid = unid;
         this.children = new ArrayList<>();
-        this.uniqueID = idCounter++; // Assign UniqueID and increment the counter
+        this.parentId = -1; // Set to -1 initially
     }
 
-    // Method to add a child node
     public void addChild(ASTNode child) {
         children.add(child);
+        child.setParentId(this.unid); // Set this node as the parent of the child
     }
 
-    // Method to get the UniqueID
-    public int getUniqueID() {
-        return uniqueID;
+    public void setParentId(int parentId) {
+        this.parentId = parentId;
     }
 
-    // Improved printTree method
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public int getUNID() {
+        return unid;
+    }
+
+    public int getParentId() {
+        return parentId;
+    }
+
+    public List<ASTNode> getChildren() {
+        return children;
+    }
+
+
+    // Improved printTree method to print the tree structure with IDs
     public void printTree(String prefix, boolean isTail) {
-        System.out.println(prefix + (isTail ? "└── " : "├── ") + value + " (ID: " + uniqueID + ")"); // Print the current node value with ID
+        System.out.println(prefix + (isTail ? "└── " : "├── ") + symbol + " (ID: " + unid + ")"); // Corrected to use 'symbol' and 'unid'
+        
         for (int i = 0; i < children.size(); i++) {
             // Recursively print each child, updating the prefix
             children.get(i).printTree(prefix + (isTail ? "    " : "│   "), i == children.size() - 1);
@@ -37,7 +55,7 @@ class ASTNode {
 
     @Override
     public String toString() {
-        return value; // Simple string representation for debugging
+        return symbol; // Simple string representation for debugging
     }
     
 }
@@ -48,6 +66,9 @@ public class SLRParser {
     static Map<Integer, Map<String, String>> actionTable = new HashMap<>();
     static Map<Integer, Map<String, Integer>> gotoTable = new HashMap<>();
     private static ASTNode syntaxTree; // Root of the syntax tree
+    private static Map<Integer, ASTNode> nodeMap = new HashMap<>();
+
+
 
     
     // Method to read tokens from the XML file and build the input string array
@@ -462,7 +483,7 @@ public class SLRParser {
 
         //State 43
         actionTable.put(43,new HashMap<>());
-        actionTable.get(43).put(")","R16");
+        actionTable.get(43).put(";","R16");
 
         //State 44
         actionTable.put(44,new HashMap<>());
@@ -917,7 +938,7 @@ public class SLRParser {
 
         // State 109
         actionTable.put(109, new HashMap<>());
-        actionTable.get(109).put("V","S28");
+        actionTable.get(109).put("V","S10");
         actionTable.get(109).put("N","S41");
         actionTable.get(109).put("T","S42");
         gotoTable.put(109,new HashMap<>());
@@ -1019,89 +1040,157 @@ public class SLRParser {
 
     public static boolean parse(String[] input) {
         Stack<Integer> stateStack = new Stack<>();
-        Stack<ASTNode> symbolStack = new Stack<>(); // Use ASTNode stack instead of String
-        stateStack.push(0);  // Start state
+        Stack<ASTNode> symbolStack = new Stack<>();
+        stateStack.push(0); // Start state
     
         int pointer = 0;
+        int nodeIdCounter = 0; // Counter for unique node IDs
         while (pointer < input.length) {
-            System.out.println("State Stack: " + stateStack);
-            System.out.println("Symbol Stack: " + symbolStack);
-            
             int currentState = stateStack.peek();
-            System.out.println("Current State: " + currentState);
             String symbol = input[pointer];
-            System.out.println("Symbol: " + symbol);
     
             // Get action from action table
             String action = actionTable.getOrDefault(currentState, new HashMap<>()).get(symbol);
-    
             if (action == null) {
                 // Error: Unexpected symbol
                 System.out.println("Error: Unexpected symbol '" + symbol + "'.");
-                // Print expected symbols
-                Map<String, String> expectedActions = actionTable.getOrDefault(currentState, new HashMap<>());
-                if (!expectedActions.isEmpty()) {
-                    System.out.println("Expected one of: " + expectedActions.keySet());
-                } else {
-                    System.out.println("No valid actions for the current state.");
-                }
                 return false;
             } else if (action.startsWith("S")) {
                 // Shift operation
                 int nextState = Integer.parseInt(action.substring(1));
+                ASTNode newNode = new ASTNode(symbol, nodeIdCounter++); // Create a new ASTNode
+                nodeMap.put(newNode.getUNID(), newNode); // Add the node to the nodeMap
                 stateStack.push(nextState);
-                symbolStack.push(new ASTNode(symbol)); // Push symbol as an ASTNode
-                pointer++;  // Move to next symbol
+                symbolStack.push(newNode); // Push symbol with unique ID
+                pointer++;
             } else if (action.startsWith("R")) {
                 // Reduce operation
                 int ruleIndex = Integer.parseInt(action.substring(1));
                 String[] rule = grammar.get(ruleIndex);
-                String lhs = rule[0];  // Left-hand side of the grammar rule
-                String rhs = rule[1];  // Right-hand side of the grammar rule (could be empty)
-    
-                System.out.println("Reducing using rule " + ruleIndex + ": " + lhs + " -> " + rhs);
+                String lhs = rule[0]; // Left-hand side of the grammar rule
+                String rhs = rule[1]; // Right-hand side of the grammar rule
     
                 // Determine how many symbols to pop
                 int popCount = rhs.equals("") ? 0 : rhs.split(" ").length;
     
                 // Pop states and symbols
-                List<ASTNode> children = new ArrayList<>(); // List to hold children for the AST node
+                List<ASTNode> children = new ArrayList<>();
                 for (int i = 0; i < popCount; i++) {
                     stateStack.pop();
-                    children.add(symbolStack.pop());  // Pop from symbol stack as ASTNodes
+                    children.add(symbolStack.pop()); // Pop from symbol stack
                 }
     
                 // Create a new AST node for the LHS
-                ASTNode newNode = new ASTNode(lhs);
-                // Add the children to the new node
-                for (int i = children.size() - 1; i >= 0; i--) { // Reverse to maintain order
-                    newNode.addChild(children.get(i));
+                ASTNode newNode = new ASTNode(lhs, nodeIdCounter++);
+                for (ASTNode child : children) {
+                    newNode.addChild(child); // Add children to the new node
                 }
-    
-                // Push the new node onto the symbol stack
+                nodeMap.put(newNode.getUNID(), newNode); // Add the new node to the nodeMap
                 symbolStack.push(newNode);
     
                 // Get the next state from the goto table
                 int topState = stateStack.peek();
                 Integer gotoState = gotoTable.getOrDefault(topState, new HashMap<>()).get(lhs);
-                if (gotoState == null) {
-                    System.out.println("Error: No GOTO entry for state " + topState + " and symbol " + lhs);
-                    return false;
-                }
-                stateStack.push(gotoState);  // Push the new state from the GOTO table
-    
+                stateStack.push(gotoState);
             } else if (action.equals("ACC")) {
                 // Accept operation
-                System.out.println("Input successfully parsed.");
-                // The syntax tree root is the last item in the symbol stack
-                syntaxTree = symbolStack.pop();
+                syntaxTree = symbolStack.pop(); // The syntax tree root
+                generateXML(); // Call the XML generation method
                 return true;
             }
         }
-    
         return false;
     }
-
+    
+    
+    private static void generateXML() {
+        StringBuilder xmlBuilder = new StringBuilder();
+        xmlBuilder.append("<SYNTREE>\n");
+    
+        // Generate ROOT section
+        generateRoot(xmlBuilder, syntaxTree);
+    
+        // Generate INNER NODES section
+        xmlBuilder.append("<INNERNODES>\n");
+        generateInnerNodes(xmlBuilder, syntaxTree);
+        xmlBuilder.append("</INNERNODES>\n");
+    
+        // Generate LEAF NODES section
+        xmlBuilder.append("<LEAFNODES>\n");
+        generateLeafNodes(xmlBuilder, syntaxTree);
+        xmlBuilder.append("</LEAFNODES>\n");
+    
+        xmlBuilder.append("</SYNTREE>");
+    
+        // Output the generated XML
+        System.out.println(xmlBuilder.toString());
+    }
+    
+    private static void generateRoot(StringBuilder xmlBuilder, ASTNode root) {
+        xmlBuilder.append("<ROOT>\n");
+        xmlBuilder.append("<UNID>").append(root.getUNID()).append("</UNID>\n");
+        xmlBuilder.append("<SYMB>").append(root.getSymbol()).append("</SYMB>\n");
+        xmlBuilder.append("<CHILDREN>\n");
+        for (ASTNode child : root.getChildren()) {
+            xmlBuilder.append("<ID>").append(child.getUNID()).append("</ID>\n");
+        }
+        xmlBuilder.append("</CHILDREN>\n");
+        xmlBuilder.append("</ROOT>\n");
+    }
+    
+    private static void generateInnerNodes(StringBuilder xmlBuilder, ASTNode node) {
+        for (ASTNode child : node.getChildren()) {
+            if (!child.getChildren().isEmpty()) { // Only generate for inner nodes
+                xmlBuilder.append("<IN>\n");
+                xmlBuilder.append("<PARENT>").append(node.getUNID()).append("</PARENT>\n");
+                xmlBuilder.append("<UNID>").append(child.getUNID()).append("</UNID>\n");
+                xmlBuilder.append("<SYMB>").append(child.getSymbol()).append("</SYMB>\n");
+                xmlBuilder.append("<CHILDREN>\n");
+                for (ASTNode grandChild : child.getChildren()) {
+                    xmlBuilder.append("<ID>").append(grandChild.getUNID()).append("</ID>\n");
+                }
+                xmlBuilder.append("</CHILDREN>\n");
+                xmlBuilder.append("</IN>\n");
+            }
+            generateInnerNodes(xmlBuilder, child); // Recurse for deeper inner nodes
+        }
+    }
+    
+    private static void generateLeafNodes(StringBuilder xmlBuilder, ASTNode node) {
+        for (ASTNode child : node.getChildren()) {
+            if (child.getChildren().isEmpty()) { // Only generate for leaf nodes
+                xmlBuilder.append("<LEAF>\n");
+                xmlBuilder.append("<PARENT>").append(node.getUNID()).append("</PARENT>\n");
+                xmlBuilder.append("<UNID>").append(child.getUNID()).append("</UNID>\n");
+                xmlBuilder.append("<TERMINAL>").append(child.getSymbol()).append("</TERMINAL>\n");
+                xmlBuilder.append("</LEAF>\n");
+            } else {
+                generateLeafNodes(xmlBuilder, child); // Recurse for deeper leaf nodes
+            }
+        }
+    }
+    
+    private ASTNode parseNode(Element element) {
+        String symbol = element.getElementsByTagName("SYMB").item(0).getTextContent();
+        int unid = Integer.parseInt(element.getElementsByTagName("UNID").item(0).getTextContent());
+    
+        ASTNode node = new ASTNode(symbol, unid);
+        
+        NodeList childNodes = element.getElementsByTagName("ID");
+        for (int i = 0; i < childNodes.getLength(); i++) {
+            int childId = Integer.parseInt(childNodes.item(i).getTextContent());
+            // Assuming you have a method to retrieve child ASTNodes by UNID
+            ASTNode childNode = getNodeByUNID(childId);
+            if (childNode != null) {
+                node.addChild(childNode);
+            }
+        }
+        return node;
+    }
+    
+    public ASTNode getNodeByUNID(int unid) {
+        return nodeMap.get(unid);
+    }
     // Method to get the syntax tree
     public ASTNode getSyntaxTree() {
         return syntaxTree;

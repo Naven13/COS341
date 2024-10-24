@@ -1,166 +1,94 @@
-import java.util.*;
+import org.w3c.dom.*; // Ensure to include XML parsing libraries
+import javax.xml.parsers.*;
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ScopeAnalyzer {
-    // Stores global variables and functions
-    private Set<String> globalVariables = new HashSet<>();
-    private Set<String> functionNames = new HashSet<>();
-    private Stack<Map<String, String>> scopeStack = new Stack<>();
+    private SymbolTable symbolTable; // A simple hash table for symbol storage
+    private static Map<Integer, ASTNode> nodeMap; // To link syntax tree nodes
+    private int variableCounter = 0; // Counter for generating unique variable names
+    private int functionCounter = 0; // Counter for generating unique function names
 
     public ScopeAnalyzer() {
-        // Initialize with global scope
-        scopeStack.push(new HashMap<>());
+        symbolTable = new SymbolTable();
+        nodeMap = new HashMap<>(); // Initialize the node map
     }
 
-    // Declare a global variable
-    public void declareGlobalVariable(String name) {
-        if (globalVariables.contains(name)) {
-            log("Global variable '" + name + "' is already declared.");
-            return;
-        }
-        if (isDeclaredInAnyScope(name)) {
-            log("Variable '" + name + "' conflicts with an existing local variable.");
-            return;
-        }
-        globalVariables.add(name);
-        log("Declared global variable: " + name);
-    }
-
-    // Declare a local variable
-    public void declareVariable(String name) {
-        Map<String, String> currentScope = scopeStack.peek();
-        if (currentScope.containsKey(name)) {
-            log("Variable '" + name + "' is already declared in this local scope.");
-            return;
-        }
-        if (globalVariables.contains(name)) {
-            log("Variable '" + name + "' shadows a global variable.");
-        }
-        currentScope.put(name, "local");
-        log("Declared local variable: " + name);
-    }
-
-    // Declare a function
-    public void declareFunction(String name, String[] parameters) {
-        if (functionNames.contains(name)) {
-            log("Function '" + name + "' is already declared.");
-            return;
-        }
-
-        // Check for parameter name collisions
-        for (String param : parameters) {
-            if (globalVariables.contains(param) || isDeclaredInAnyScope(param)) {
-                log("Parameter '" + param + "' conflicts with an existing variable.");
-                return;
-            }
-        }
-
-        functionNames.add(name);
-        log("Declared function: " + name + " with parameters: " + String.join(", ", parameters));
-    }
-
-    // Enter a new scope
-    public void enterScope() {
-        scopeStack.push(new HashMap<>());
-        log("Entered new scope.");
-    }
-
-    // Exit the current scope
-    public void exitScope() {
-        if (!scopeStack.isEmpty()) {
-            scopeStack.pop();
-            log("Exited scope.");
-        }
-    }
-
-    // Find a variable in the current or any enclosing scope
-    public boolean findVariable(String name) {
-        for (int i = scopeStack.size() - 1; i >= 0; i--) {
-            if (scopeStack.get(i).containsKey(name)) {
-                log("Found variable '" + name + "' in " + (i == 0 ? "global" : "local") + " scope.");
-                return true;
-            }
-        }
-        log("Variable '" + name + "' not declared.");
-        return false;
-    }
-
-    // Check if variable is declared in any scope
-    private boolean isDeclaredInAnyScope(String name) {
-        for (Map<String, String> scope : scopeStack) {
-            if (scope.containsKey(name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Find a function
-    public boolean findFunction(String name) {
-        if (functionNames.contains(name)) {
-            log("Found function '" + name + "' in global scope.");
-            return true;
-        }
-        log("Function '" + name + "' not declared.");
-        return false;
-    }
-
-    // Logging method for output
-    private void log(String message) {
-        System.out.println(message);
-    }
-
-    // Test the ScopeAnalyzer
-    public static void main(String[] args) {
-        ScopeAnalyzer analyzer = new ScopeAnalyzer();
-
-        // Test global variable declarations
-        analyzer.declareGlobalVariable("V_a");
-        analyzer.declareGlobalVariable("V_b");
-        analyzer.declareGlobalVariable("V_result");
-        analyzer.declareFunction("F_logic", new String[]{"V_x", "V_y"});
-        analyzer.declareFunction("F_helper", new String[]{});
-
-        // Test local variable declarations
-        analyzer.enterScope();
-        analyzer.declareVariable("V_x");
-        analyzer.declareVariable("V_y");
-        analyzer.declareVariable("V_dummy");
-        analyzer.declareVariable("V_x"); // Should give conflict
-        analyzer.enterScope();
-        analyzer.declareVariable("V_temp");
-        analyzer.declareVariable("V_dummy1");
-        analyzer.declareVariable("V_dummy2");
-        analyzer.declareVariable("V_a"); // Shadows global variable
-
-        // Find variables
-        System.out.println(analyzer.findVariable("V_x")); // true
-        System.out.println(analyzer.findVariable("V_a")); // true
-        System.out.println(analyzer.findFunction("F_logic")); // true
-        System.out.println(analyzer.findFunction("NonExistentFunction")); // false
-
-        // Exit scopes
-        analyzer.exitScope();
-        analyzer.exitScope();
-
-        // Test another scope
-        analyzer.enterScope();
-        analyzer.declareVariable("V_new");
-        System.out.println(analyzer.findVariable("V_new")); // true
-        System.out.println(analyzer.findVariable("V_x")); // false
-        analyzer.exitScope();
+    public void analyze(ASTNode root) {
+        // Load the syntax tree from XML
+        loadSyntaxTree("syntax_tree.xml");
         
-        // Checking for variable shadowing in nested scope
-        analyzer.enterScope();
-        analyzer.declareVariable("V_outer");
-        analyzer.enterScope();
-        analyzer.declareVariable("V_inner");
-        System.out.println(analyzer.findVariable("V_outer")); // true
-        System.out.println(analyzer.findVariable("V_inner")); // true
-        analyzer.exitScope();
-        System.out.println(analyzer.findVariable("V_inner")); // false
-        analyzer.exitScope();
-        System.out.println(analyzer.findVariable("V_outer")); // false
+        // Start the tree crawling and populating the symbol table
+        traverseTree(root);
+    }
 
-        System.out.println("All tests completed.");
+    private void traverseTree(ASTNode node) {
+        if (node == null) return;
+
+        String symbol = node.getSymbol();
+        // Here we handle different symbols
+        if (symbol.equals("V")) { // Variable declaration
+            String variableName = node.getSymbol(); // Assuming the variable name is stored in the symbol
+            String uniqueName = getUniqueVariableName(variableName);
+            symbolTable.addVariable(node.getUNID(), uniqueName); // Use node ID as foreign key
+            System.out.println("Variable declared: " + uniqueName);
+        } else if (symbol.equals("F")) { // Function declaration
+            String functionName = node.getSymbol(); // Assuming the function name is stored in the symbol
+            String uniqueName = getUniqueFunctionName(functionName);
+            symbolTable.addFunction(node.getUNID(), uniqueName); // Use node ID as foreign key
+            System.out.println("Function declared: " + uniqueName);
+        }
+
+        // Recursively visit children
+        for (ASTNode child : node.getChildren()) {
+            traverseTree(child);
+        }
+    }
+
+    private String getUniqueVariableName(String baseName) {
+        // Generate a unique variable name using the counter
+        return "v" + (variableCounter++);
+    }
+
+    private String getUniqueFunctionName(String baseName) {
+        // Generate a unique function name using the counter
+        return "f" + (functionCounter++);
+    }
+
+    private void loadSyntaxTree(String filename) {
+        try {
+            File inputFile = new File(filename);
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(inputFile);
+            doc.getDocumentElement().normalize();
+            
+            // Parse the XML into an ASTNode structure
+            NodeList nodeList = doc.getElementsByTagName("node"); // Adjust according to your XML structure
+            for (int i = 0; i < nodeList.getLength(); i++) {
+                Element element = (Element) nodeList.item(i);
+                int id = Integer.parseInt(element.getAttribute("id")); // Get the unique ID
+                String symbol = element.getAttribute("symbol"); // Get the symbol type (e.g., V or F)
+
+                // Create a new ASTNode with the retrieved values
+                ASTNode astNode = new ASTNode(symbol, id);
+                nodeMap.put(id, astNode); // Add the node to the nodeMap
+
+                // Handle child nodes
+                NodeList children = element.getElementsByTagName("child"); // Adjust according to your XML structure
+                for (int j = 0; j < children.getLength(); j++) {
+                    Element childElement = (Element) children.item(j);
+                    int childId = Integer.parseInt(childElement.getAttribute("ref")); // Reference to the child's ID
+                    ASTNode childNode = nodeMap.get(childId); // Get the child from the nodeMap
+                    if (childNode != null) {
+                        astNode.addChild(childNode); // Link the child to the parent
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
